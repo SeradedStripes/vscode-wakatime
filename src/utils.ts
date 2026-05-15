@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { COMMON_AI_EXTENSIONS, TIME_BETWEEN_HEARTBEATS_MS } from './constants';
+import { TIME_BETWEEN_HEARTBEATS_MS } from './constants';
 
 export class Utils {
   private static appNames = {
@@ -138,65 +138,15 @@ export class Utils {
     return uri.scheme === 'pr';
   }
 
-  public static isCodexCodeReview(e: vscode.TabChangeEvent): boolean {
-    const isCodexDiff = (tab: vscode.Tab): boolean => {
-      if (!tab.isActive) return false;
-      const viewType = (tab.input as { viewType?: string } | undefined)?.viewType;
-      if (!viewType?.includes('chatgpt')) return false;
-      return tab.label.toLowerCase().includes('codex diff');
-    };
-    return [...e.opened, ...e.changed].some(isCodexDiff);
-  }
-
-  public static isAIChatSidebar(uri: vscode.Uri | undefined): boolean {
-    // first check if the active tab is the Claude Code sidebar
-    const activeTab = vscode.window.tabGroups?.activeTabGroup?.activeTab;
-    const viewType = (activeTab?.input as { viewType?: string } | undefined)?.viewType;
-    if (viewType?.includes('claude') && activeTab?.label.toLowerCase().includes('claude')) {
-      return true;
-    }
-
-    // second, check if the active uri has an AI sidebar scheme
-    if (!uri) return false;
-    if (uri.fsPath.endsWith('.log')) return false;
-    if (uri.scheme === 'vscode-chat-code-block') return true;
-    if (uri.scheme === 'openai-codex') return true;
-    return false;
-  }
-
-  public static isPossibleAICodeInsert(e: vscode.TextDocumentChangeEvent): boolean {
-    if (e.document.fileName.endsWith('.log')) return false;
-    if (e.contentChanges.length !== 1) return false;
-
-    const text = e.contentChanges?.[0].text.trim();
-    if (text.length <= 2) return false;
-
-    // inserted text must be 2+ lines or single line 50+ chars long to qualify as AI
-    return (text.match(/[\n\r]/g) || []).length > 2 || text.length > 50;
-  }
-
   public static getFocusedFile(document?: vscode.TextDocument): string | undefined {
     const doc = document ?? vscode.window.activeTextEditor?.document;
     if (doc) {
       const file = doc.fileName;
       if (Utils.isRemoteUri(doc.uri)) {
         return `${doc.uri.authority}${doc.uri.path}`.replace('ssh-remote+', 'ssh://');
-        // TODO: how to support 'dev-container', 'attached-container', 'wsl', and 'codespaces' schemes?
       }
       return file;
     }
-  }
-
-  public static isPossibleHumanCodeInsert(e: vscode.TextDocumentChangeEvent): boolean {
-    if (e.contentChanges.length !== 1) return false;
-    if (
-      e.contentChanges?.[0].text.trim().length === 1 &&
-      e.contentChanges?.[0].text !== '\n' &&
-      e.contentChanges?.[0].text !== '\r'
-    )
-      return true;
-    if (e.contentChanges?.[0].text.length === 0) return true;
-    return false;
   }
 
   public static getEditorName(): string {
@@ -218,22 +168,11 @@ export class Utils {
     }
   }
 
-  public static hasAIExtensions(): boolean {
-    return COMMON_AI_EXTENSIONS.some((assistant) => {
-      return assistant.extensionIds.some((id) => {
-        const extension = vscode.extensions.getExtension(id);
-        return extension && extension.isActive;
-      });
-    });
-  }
-
   public static buildUserAgentString(
     editorName: string,
     extensionVersion: string,
-    aiName: string | undefined = undefined,
   ): string {
-    const ai = aiName ? ` ${aiName}` : '';
-    return editorName + '/' + vscode.version + ai + ' vscode-wakatime/' + extensionVersion;
+    return editorName + '/' + vscode.version + ' vscode-wakatime/' + extensionVersion;
   }
 
   public static withinSeconds(
