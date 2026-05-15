@@ -4,6 +4,23 @@
 [![Installs](https://wakatime.com/shields-proxy/visual-studio-marketplace/i/WakaTime.vscode-wakatime.png)](https://marketplace.visualstudio.com/items?itemName=WakaTime.vscode-wakatime)
 [![WakaTime](https://wakatime.com/badge/github/wakatime/vscode-wakatime.png?style=flat-square&branch=master)](https://wakatime.com/badge/github/wakatime/vscode-wakatime)
 
+## Build & Run
+
+```bash
+npm install
+npm run compile          # webpack build (both web + desktop)
+npm run compile:dev      # or: tsc type-check only
+npm run watch            # or: watch mode for development
+```
+
+To run the desktop extension in VS Code, press `F5` in the editor with this repo opened.
+
+To run the web version in a browser:
+
+```bash
+npm run compile && npm run open-in-browser
+```
+
 [WakaTime][wakatime] is an open source VS Code plugin for metrics, insights, and time tracking automatically generated from your programming activity.
 
 ## Installation
