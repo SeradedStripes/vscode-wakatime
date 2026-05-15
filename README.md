@@ -6,20 +6,16 @@
 
 ## Build & Run
 
+Build a `.vsix` file for installation:
+
 ```bash
 npm install
-npm run compile          # webpack build (both web + desktop)
-npm run compile:dev      # or: tsc type-check only
-npm run watch            # or: watch mode for development
+npx vsce package
 ```
 
-To run the desktop extension in VS Code, press `F5` in the editor with this repo opened.
+The generated `.vsix` can be installed via *Extensions → ... → Install from VSIX...*.
 
-To run the web version in a browser:
-
-```bash
-npm run compile && npm run open-in-browser
-```
+For development, press `F5` in VS Code to launch the Extension Development Host.
 
 [WakaTime][wakatime] is an open source VS Code plugin for metrics, insights, and time tracking automatically generated from your programming activity.
 
