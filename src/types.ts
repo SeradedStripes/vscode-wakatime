@@ -8,3 +8,12 @@ interface FileSelection {
 export interface FileSelectionMap {
   [key: string]: FileSelection;
 }
+
+export interface FileLineCount {
+  lines: number;
+  updatedAt: number;
+}
+
+export interface LinesInFiles {
+  [fileName: string]: FileLineCount;
+}

@@ -9,7 +9,7 @@ import {
 
 import { Logger } from './logger';
 import { Memento } from 'vscode';
-import { FileSelectionMap } from '../types';
+import { FileSelectionMap, LinesInFiles } from '../types';
 import { Utils } from '../utils';
 
 export class WakaTime {
@@ -40,6 +40,7 @@ export class WakaTime {
   private currentlyFocusedFile: string;
   private teamDevsForFileCache = {};
   private lastApiKeyPrompted: number = 0;
+  private linesInFiles: LinesInFiles = {};
   private heartbeats: Heartbeat[] = [];
   private lastSent: number = 0;
 
@@ -368,18 +369,21 @@ export class WakaTime {
 
   private onDebuggingChanged(): void {
     this.logger.debug('onDebuggingChanged');
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onDidStartDebugSession(): void {
     this.logger.debug('onDidStartDebugSession');
     this.isDebugging = true;
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onDidTerminateDebugSession(): void {
     this.logger.debug('onDidTerminateDebugSession');
     this.isDebugging = false;
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
@@ -388,44 +392,74 @@ export class WakaTime {
     if (e.execution.task.isBackground) return;
     if (e.execution.task.detail && e.execution.task.detail.indexOf('watch') !== -1) return;
     this.isCompiling = true;
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onDidEndTask(): void {
     this.logger.debug('onDidEndTask');
     this.isCompiling = false;
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onChangeSelection(e: vscode.TextEditorSelectionChangeEvent): void {
     this.logger.debug('onChangeSelection');
     if (e.kind === vscode.TextEditorSelectionChangeKind.Command) return;
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onChangeTextDocument(_e: vscode.TextDocumentChangeEvent): void {
     this.logger.debug('onChangeTextDocument');
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onChangeTab(_e: vscode.TextEditor | undefined): void {
     this.logger.debug('onChangeTab');
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onSave(_e: vscode.TextDocument | undefined): void {
     this.logger.debug('onSave');
+    this.updateLineNumbers();
     this.onEvent(true);
   }
 
   private onChangeNotebook(_e: vscode.NotebookDocumentChangeEvent): void {
     this.logger.debug('onChangeNotebook');
+    this.updateLineNumbers();
     this.onEvent(false);
   }
 
   private onSaveNotebook(_e: vscode.NotebookDocument | undefined): void {
     this.logger.debug('onSaveNotebook');
+    this.updateLineNumbers();
     this.onEvent(true);
+  }
+
+  private updateLineNumbers(): void {
+    const doc = vscode.window.activeTextEditor?.document;
+    if (!doc) return;
+    const file = Utils.getFocusedFile(doc);
+    if (!file) return;
+
+    const now = Date.now();
+    const current = doc.lineCount;
+    if (this.linesInFiles[file] === undefined) {
+      this.linesInFiles[file] = { lines: current, updatedAt: now };
+    }
+
+    const prev = this.linesInFiles[file] ?? { lines: current, updatedAt: now };
+    let delta = current - prev.lines;
+
+    if (delta > 50 && Math.abs(now - prev.updatedAt) < 60000) {
+      delta = 0;
+    }
+
+    this.linesInFiles[file] = { lines: current, updatedAt: now };
   }
 
   private onEvent(isWrite: boolean): void {
