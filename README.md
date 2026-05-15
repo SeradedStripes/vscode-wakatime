@@ -4,6 +4,8 @@
 [![Installs](https://wakatime.com/shields-proxy/visual-studio-marketplace/i/WakaTime.vscode-wakatime.png)](https://marketplace.visualstudio.com/items?itemName=WakaTime.vscode-wakatime)
 [![WakaTime](https://wakatime.com/badge/github/wakatime/vscode-wakatime.png?style=flat-square&branch=master)](https://wakatime.com/badge/github/wakatime/vscode-wakatime)
 
+This is a simple fork which just removes ai coding stuff from wakatime
+
 ## Build & Run
 
 Build a `.vsix` file for installation:
