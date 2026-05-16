@@ -742,6 +742,9 @@ export class WakaTime {
 
     if (this.isMetricsEnabled) args.push('--metrics');
 
+    // Disable CLI parsing of AI transcript logs so AI activity is not logged
+    args.push('--sync-ai-disabled');
+
     const apiKey = await this.options.getApiKey();
     if (!Utils.apiKeyInvalid(apiKey)) args.push('--key', Utils.quote(apiKey));
 
