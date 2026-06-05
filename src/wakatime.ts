@@ -436,7 +436,6 @@ export class WakaTime {
       this,
       subscriptions,
     );
-    vscode.window.onDidChangeWindowState(this.onDidChangeWindowState, this, subscriptions);
     vscode.workspace.onDidSaveTextDocument(this.onSave, this, subscriptions);
 
     vscode.workspace.onDidChangeNotebookDocument(this.onChangeNotebook, this, subscriptions);
@@ -539,13 +538,6 @@ export class WakaTime {
     this.logger.debug('onSave');
     this.updateLineNumbers(e);
     this.onEvent(true, e);
-  }
-
-  private onDidChangeWindowState(e: vscode.WindowState): void {
-    if (!e.focused) return;
-    this.logger.debug('onDidChangeWindowState');
-    this.updateLineNumbers();
-    this.onEvent(false);
   }
 
   private onChangeNotebook(_e: vscode.NotebookDocumentChangeEvent): void {
