@@ -37,3 +37,4 @@ export interface Heartbeat {
 }
 
 export const ALLOWED_SCHEMES = ['file', 'vscode-remote'];
+export const HEARTBEAT_BUFFER_MAX = 250;

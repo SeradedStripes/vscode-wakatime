@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import {
   ALLOWED_SCHEMES,
   COMMAND_DASHBOARD,
+  HEARTBEAT_BUFFER_MAX,
   Heartbeat,
   LogLevel,
   SEND_BUFFER_SECONDS,
@@ -661,11 +662,9 @@ export class WakaTime {
     // prevent sending the same heartbeat (https://github.com/wakatime/vscode-wakatime/issues/163)
     if (isWrite && this.isDuplicateHeartbeat(file, time, selection)) return;
 
-    const now = Date.now();
-
     const heartbeat: Heartbeat = {
       entity: file,
-      time: now / 1000,
+      time: time / 1000,
       is_write: isWrite,
       lineno: selection.line + 1,
       cursorpos: selection.character + 1,
@@ -688,6 +687,11 @@ export class WakaTime {
 
     if (doc.isUntitled) heartbeat.is_unsaved_entity = true;
 
+    const languageId = doc.languageId;
+    if (languageId && languageId !== 'plaintext') {
+      heartbeat.language = languageId;
+    }
+
     if (Utils.isRemoteUri(doc.uri)) {
       try {
         const tmpFile = path.join(
@@ -705,6 +709,10 @@ export class WakaTime {
     }
 
     this.logger.debug(`Appending heartbeat to local buffer: ${JSON.stringify(heartbeat, null, 2)}`);
+    if (this.heartbeats.length >= HEARTBEAT_BUFFER_MAX) {
+      this.logger.warn(`Heartbeat buffer full (${HEARTBEAT_BUFFER_MAX}), dropping oldest heartbeat`);
+      this.heartbeats.shift();
+    }
     this.heartbeats.push(heartbeat);
 
     await this.sendHeartbeatsIfNecessary();
