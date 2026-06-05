@@ -612,7 +612,7 @@ export class WakaTime {
         if (!file) {
           return;
         }
-        if (document && this.currentlyFocusedFile !== file) {
+        if (this.currentlyFocusedFile !== file && (!document || editor?.document === doc)) {
           this.updateTeamStatusBarFromJson();
           this.updateTeamStatusBar(doc);
         }
