@@ -523,7 +523,7 @@ export class WakaTime {
   private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
     if (!ALLOWED_SCHEMES.includes(e.document?.uri?.scheme)) return;
     this.logger.debug('onChangeTextDocument');
-    this.updateLineNumbers();
+    this.updateLineNumbers(e.document);
     this.onEvent(false, e.document);
   }
 
@@ -536,13 +536,15 @@ export class WakaTime {
 
   private onSave(e: vscode.TextDocument | undefined): void {
     this.logger.debug('onSave');
-    this.updateLineNumbers();
+    this.updateLineNumbers(e);
     this.onEvent(true, e);
   }
 
   private onDidChangeWindowState(e: vscode.WindowState): void {
     if (!e.focused) return;
     this.logger.debug('onDidChangeWindowState');
+    this.updateLineNumbers();
+    this.onEvent(false);
   }
 
   private onChangeNotebook(_e: vscode.NotebookDocumentChangeEvent): void {
@@ -577,8 +579,8 @@ export class WakaTime {
     this.logger.debug('onDidOpenTerminal');
   }
 
-  private updateLineNumbers(): void {
-    const doc = vscode.window.activeTextEditor?.document;
+  private updateLineNumbers(document?: vscode.TextDocument): void {
+    const doc = document ?? vscode.window.activeTextEditor?.document;
     if (!doc) return;
     const file = Utils.getFocusedFile(doc);
     if (!file) return;
