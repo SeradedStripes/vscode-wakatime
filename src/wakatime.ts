@@ -11,7 +11,6 @@ import {
   Heartbeat,
   LogLevel,
   SEND_BUFFER_SECONDS,
-  TIME_BETWEEN_HEARTBEATS_MS,
 } from './constants';
 import { FileSelectionMap, LinesInFiles } from './types';
 import { Utils } from './utils';
@@ -56,7 +55,6 @@ export class WakaTime {
   private linesInFiles: LinesInFiles = {};
   private heartbeats: Heartbeat[] = [];
   private lastSent: number = 0;
-  private lastActivityTime: number = 0;
   private heartbeatTimer: any = null;
 
   constructor(extensionPath: string, logger: Logger) {
@@ -467,50 +465,14 @@ export class WakaTime {
   private startHeartbeatTimer(): void {
     this.stopHeartbeatTimer();
     this.heartbeatTimer = setInterval(() => {
-      this.onHeartbeatTimer();
-    }, TIME_BETWEEN_HEARTBEATS_MS);
+      this.sendHeartbeatsIfNecessary();
+    }, SEND_BUFFER_SECONDS * 1000);
   }
 
   private stopHeartbeatTimer(): void {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
-    }
-  }
-
-  private onHeartbeatTimer(): void {
-    if (this.disabled) return;
-    if (!this.dependencies?.isCliInstalled()) return;
-
-    if (Date.now() - this.lastActivityTime > TIME_BETWEEN_HEARTBEATS_MS) return;
-
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
-    const doc = editor.document;
-    if (!doc) return;
-    const file = Utils.getFocusedFile(doc);
-    if (!file) return;
-    if (!ALLOWED_SCHEMES.includes(doc.uri.scheme)) return;
-
-    const time = Date.now();
-    if (
-      Utils.enoughTimePassed(this.lastHeartbeat, time) ||
-      this.lastFile !== file ||
-      this.lastDebug !== this.isDebugging ||
-      this.lastCompile !== this.isCompiling
-    ) {
-      this.appendHeartbeat(
-        doc,
-        time,
-        editor.selection.start,
-        false,
-        this.isCompiling,
-        this.isDebugging,
-      );
-      this.lastFile = file;
-      this.lastHeartbeat = time;
-      this.lastDebug = this.isDebugging;
-      this.lastCompile = this.isCompiling;
     }
   }
 
@@ -553,7 +515,6 @@ export class WakaTime {
   private onChangeSelection(e: vscode.TextEditorSelectionChangeEvent): void {
     if (!ALLOWED_SCHEMES.includes(e.textEditor?.document?.uri?.scheme)) return;
     if (e.kind === vscode.TextEditorSelectionChangeKind.Command) return;
-    this.lastActivityTime = Date.now();
     this.logger.debug('onChangeSelection');
     this.updateLineNumbers();
     this.onEvent(false);
@@ -561,7 +522,6 @@ export class WakaTime {
 
   private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
     if (!ALLOWED_SCHEMES.includes(e.document?.uri?.scheme)) return;
-    this.lastActivityTime = Date.now();
     this.logger.debug('onChangeTextDocument');
     this.updateLineNumbers();
     this.onEvent(false);
