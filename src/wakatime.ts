@@ -524,7 +524,7 @@ export class WakaTime {
     if (!ALLOWED_SCHEMES.includes(e.document?.uri?.scheme)) return;
     this.logger.debug('onChangeTextDocument');
     this.updateLineNumbers();
-    this.onEvent(false);
+    this.onEvent(false, e.document);
   }
 
   private onChangeTab(e: vscode.TextEditor | undefined): void {
@@ -534,10 +534,10 @@ export class WakaTime {
     this.onEvent(false);
   }
 
-  private onSave(_e: vscode.TextDocument | undefined): void {
+  private onSave(e: vscode.TextDocument | undefined): void {
     this.logger.debug('onSave');
     this.updateLineNumbers();
-    this.onEvent(true);
+    this.onEvent(true, e);
   }
 
   private onDidChangeWindowState(e: vscode.WindowState): void {
@@ -599,46 +599,45 @@ export class WakaTime {
     this.linesInFiles[file] = { lines: current, updatedAt: now };
   }
 
-  private onEvent(isWrite: boolean): void {
+  private onEvent(isWrite: boolean, document?: vscode.TextDocument): void {
     this.sendHeartbeatsIfNecessary();
 
     clearTimeout(this.debounceId);
     this.debounceId = setTimeout(() => {
       if (this.disabled) return;
       const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        const doc = editor.document;
-        if (doc) {
-          const file = Utils.getFocusedFile(doc);
-          if (!file) {
-            return;
-          }
-          if (this.currentlyFocusedFile !== file) {
-            this.updateTeamStatusBarFromJson();
-            this.updateTeamStatusBar(doc);
-          }
+      const doc = document ?? editor?.document;
+      if (doc) {
+        const file = Utils.getFocusedFile(doc);
+        if (!file) {
+          return;
+        }
+        if (document && this.currentlyFocusedFile !== file) {
+          this.updateTeamStatusBarFromJson();
+          this.updateTeamStatusBar(doc);
+        }
 
-          const time: number = Date.now();
-          if (
-            isWrite ||
-            Utils.enoughTimePassed(this.lastHeartbeat, time) ||
-            this.lastFile !== file ||
-            this.lastDebug !== this.isDebugging ||
-            this.lastCompile !== this.isCompiling
-          ) {
-            this.appendHeartbeat(
-              doc,
-              time,
-              editor.selection.start,
-              isWrite,
-              this.isCompiling,
-              this.isDebugging,
-            );
-            this.lastFile = file;
-            this.lastHeartbeat = time;
-            this.lastDebug = this.isDebugging;
-            this.lastCompile = this.isCompiling;
-          }
+        const time: number = Date.now();
+        if (
+          isWrite ||
+          Utils.enoughTimePassed(this.lastHeartbeat, time) ||
+          this.lastFile !== file ||
+          this.lastDebug !== this.isDebugging ||
+          this.lastCompile !== this.isCompiling
+        ) {
+          const selection = editor?.document === doc ? editor.selection.start : new vscode.Position(0, 0);
+          this.appendHeartbeat(
+            doc,
+            time,
+            selection,
+            isWrite,
+            this.isCompiling,
+            this.isDebugging,
+          );
+          this.lastFile = file;
+          this.lastHeartbeat = time;
+          this.lastDebug = this.isDebugging;
+          this.lastCompile = this.isCompiling;
         }
       }
     }, this.debounceMs);
