@@ -13,6 +13,7 @@ import {
   Heartbeat,
   LogLevel,
   SEND_BUFFER_SECONDS,
+  TERMINAL_TIME_BETWEEN_HEARTBEATS_MS,
 } from './constants';
 import { FileSelectionMap, LinesInFiles } from './types';
 import { Utils } from './utils';
@@ -468,6 +469,11 @@ export class WakaTime {
       this,
       subscriptions,
     );
+    vscode.window.onDidEndTerminalShellExecution(
+      this.onDidEndTerminalShellExecution,
+      this,
+      subscriptions,
+    );
 
     vscode.tasks.onDidStartTask(this.onDidStartTask, this, subscriptions);
     vscode.tasks.onDidEndTask(this.onDidEndTask, this, subscriptions);
@@ -598,15 +604,34 @@ export class WakaTime {
   ): void {
     if (this.disabled) return;
     const time: number = Date.now();
-    if (!Utils.enoughTimePassed(this.lastTerminalHeartbeat, time)) return;
+    if (this.lastTerminalHeartbeat + TERMINAL_TIME_BETWEEN_HEARTBEATS_MS > time) return;
     this.lastTerminalHeartbeat = time;
     const entity = e.terminal?.name ?? 'terminal';
     this.logger.debug(`onDidStartTerminalShellExecution: ${entity}`);
     this.appendTerminalHeartbeat(entity, time);
   }
 
+  private onDidEndTerminalShellExecution(
+    e: vscode.TerminalShellExecutionEndEvent,
+  ): void {
+    if (this.disabled) return;
+    const time: number = Date.now();
+    if (this.lastTerminalHeartbeat + TERMINAL_TIME_BETWEEN_HEARTBEATS_MS > time) return;
+    this.lastTerminalHeartbeat = time;
+    const entity = e.terminal?.name ?? 'terminal';
+    this.logger.debug(`onDidEndTerminalShellExecution: ${entity}`);
+    this.appendTerminalHeartbeat(entity, time);
+  }
+
   private appendTerminalHeartbeat(name: string, time: number): void {
     if (!this.dependencies.isCliInstalled()) return;
+
+    // Only send 75% of terminal heartbeats to reflect that terminal activity
+    // is weighted less than direct editor activity.
+    if (Math.random() > 0.75) {
+      this.logger.debug('Dropping terminal heartbeat (75% sampling)');
+      return;
+    }
 
     const heartbeat: Heartbeat = {
       entity: name,

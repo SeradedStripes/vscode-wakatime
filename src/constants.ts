@@ -17,6 +17,7 @@ export enum LogLevel {
 }
 
 export const TIME_BETWEEN_HEARTBEATS_MS = 120000;
+export const TERMINAL_TIME_BETWEEN_HEARTBEATS_MS = 90000;
 export const SEND_BUFFER_SECONDS = 30;
 
 export interface Heartbeat {

@@ -2,7 +2,7 @@
   "name": "vscode-wakatime-fork",
   "displayName": "WakaTime Fork",
   "description": "Metrics, insights, and time tracking automatically generated from your programming activity.",
-  "version": "30.2.1",
+  "version": "30.2.2",
   "publisher": "WakaTime",
   "author": {
     "name": "WakaTime"
