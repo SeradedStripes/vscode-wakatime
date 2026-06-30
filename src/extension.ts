@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import {
   COMMAND_API_KEY,
   COMMAND_API_URL,
+  COMMAND_AUTO_FLUSH,
   COMMAND_CONFIG_FILE,
   COMMAND_DASHBOARD,
   COMMAND_DEBUG,
@@ -82,6 +83,12 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(
     vscode.commands.registerCommand(COMMAND_LOG_FILE, function () {
       wakatime.openLogFile();
+    }),
+  );
+
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand(COMMAND_AUTO_FLUSH, function () {
+      wakatime.toggleAutoFlush();
     }),
   );
 

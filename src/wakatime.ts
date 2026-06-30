@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 
 import {
   ALLOWED_SCHEMES,
+  COMMAND_AUTO_FLUSH,
   COMMAND_DASHBOARD,
   HEARTBEAT_BUFFER_MAX,
   Heartbeat,
@@ -57,6 +58,9 @@ export class WakaTime {
   private heartbeats: Heartbeat[] = [];
   private lastSent: number = 0;
   private heartbeatTimer: any = null;
+  private autoFlushEnabled: boolean = true;
+  private lastTerminalHeartbeat: number = 0;
+  private autoFlushStatusBar?: vscode.StatusBarItem = undefined;
 
   constructor(extensionPath: string, logger: Logger) {
     this.extensionPath = extensionPath;
@@ -101,6 +105,7 @@ export class WakaTime {
     this.statusBar?.dispose();
     this.statusBarTeamYou?.dispose();
     this.statusBarTeamOther?.dispose();
+    this.autoFlushStatusBar?.dispose();
     this.disposable?.dispose();
   }
 
@@ -143,6 +148,15 @@ export class WakaTime {
       priority,
     );
     this.statusBarTeamOther.name = 'WakaTime Team Total';
+
+    this.autoFlushStatusBar = vscode.window.createStatusBarItem(
+      'com.wakatime.autoflush',
+      vscode.StatusBarAlignment.Right,
+      0,
+    );
+    this.autoFlushStatusBar.name = 'Auto Flush';
+    this.autoFlushStatusBar.command = COMMAND_AUTO_FLUSH;
+    this.updateAutoFlushStatusBar();
 
     this.options.getSetting('settings', 'status_bar_team', false, (statusBarTeam: Setting) => {
       this.showStatusBarTeam = statusBarTeam.value !== 'false';
@@ -449,6 +463,12 @@ export class WakaTime {
     vscode.window.onDidChangeActiveTerminal(this.onDidChangeActiveTerminal, this, subscriptions);
     vscode.window.onDidOpenTerminal(this.onDidOpenTerminal, this, subscriptions);
 
+    vscode.window.onDidStartTerminalShellExecution(
+      this.onDidStartTerminalShellExecution,
+      this,
+      subscriptions,
+    );
+
     vscode.tasks.onDidStartTask(this.onDidStartTask, this, subscriptions);
     vscode.tasks.onDidEndTask(this.onDidEndTask, this, subscriptions);
 
@@ -464,6 +484,7 @@ export class WakaTime {
 
   private startHeartbeatTimer(): void {
     this.stopHeartbeatTimer();
+    if (!this.autoFlushEnabled) return;
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeatsIfNecessary();
     }, SEND_BUFFER_SECONDS * 1000);
@@ -570,6 +591,56 @@ export class WakaTime {
 
   private onDidOpenTerminal(_e: vscode.Terminal): void {
     this.logger.debug('onDidOpenTerminal');
+  }
+
+  private onDidStartTerminalShellExecution(
+    e: vscode.TerminalShellExecutionStartEvent,
+  ): void {
+    if (this.disabled) return;
+    const time: number = Date.now();
+    if (!Utils.enoughTimePassed(this.lastTerminalHeartbeat, time)) return;
+    this.lastTerminalHeartbeat = time;
+    const entity = e.terminal?.name ?? 'terminal';
+    this.logger.debug(`onDidStartTerminalShellExecution: ${entity}`);
+    this.appendTerminalHeartbeat(entity, time);
+  }
+
+  private appendTerminalHeartbeat(name: string, time: number): void {
+    if (!this.dependencies.isCliInstalled()) return;
+
+    const heartbeat: Heartbeat = {
+      entity: name,
+      time: time / 1000,
+      is_write: false,
+      entity_type: 'app',
+    };
+
+    this.logger.debug(`Appending terminal heartbeat: ${JSON.stringify(heartbeat, null, 2)}`);
+    if (this.heartbeats.length >= HEARTBEAT_BUFFER_MAX) {
+      this.logger.warn(`Heartbeat buffer full (${HEARTBEAT_BUFFER_MAX}), dropping oldest heartbeat`);
+      this.heartbeats.shift();
+    }
+    this.heartbeats.push(heartbeat);
+
+    this.sendHeartbeatsIfNecessary();
+  }
+
+  public toggleAutoFlush(): void {
+    this.autoFlushEnabled = !this.autoFlushEnabled;
+    this.updateAutoFlushStatusBar();
+    this.startHeartbeatTimer();
+  }
+
+  private updateAutoFlushStatusBar(): void {
+    if (!this.autoFlushStatusBar) return;
+    if (this.autoFlushEnabled) {
+      this.autoFlushStatusBar.text = '$(watch) Auto';
+      this.autoFlushStatusBar.tooltip = 'Auto-flush is ON. Heartbeats are sent every 30s. Click to disable.';
+    } else {
+      this.autoFlushStatusBar.text = '$(circle-slash)';
+      this.autoFlushStatusBar.tooltip = 'Auto-flush is OFF. Heartbeats are only sent on activity. Click to enable.';
+    }
+    this.autoFlushStatusBar.show();
   }
 
   private updateLineNumbers(document?: vscode.TextDocument): void {

@@ -8,6 +8,7 @@ export const COMMAND_LOG_FILE = 'wakatime.log_file';
 export const COMMAND_PROXY = 'wakatime.proxy';
 export const COMMAND_STATUS_BAR_CODING_ACTIVITY = 'wakatime.status_bar_coding_activity';
 export const COMMAND_STATUS_BAR_ENABLED = 'wakatime.status_bar_enabled';
+export const COMMAND_AUTO_FLUSH = 'wakatime.auto_flush';
 export enum LogLevel {
   DEBUG = 0,
   INFO,
