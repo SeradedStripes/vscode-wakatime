@@ -551,7 +551,8 @@ export class WakaTime {
     if (!ALLOWED_SCHEMES.includes(e.document?.uri?.scheme)) return;
     this.logger.debug('onChangeTextDocument');
     this.updateLineNumbers(e.document);
-    this.onEvent(false, e.document);
+    const line = e.contentChanges?.[0]?.range?.start?.line;
+    this.onEvent(false, e.document, line);
   }
 
   private onChangeTab(e: vscode.TextEditor | undefined): void {
@@ -690,7 +691,7 @@ export class WakaTime {
     this.linesInFiles[file] = { lines: current, updatedAt: now };
   }
 
-  private onEvent(isWrite: boolean, document?: vscode.TextDocument): void {
+  private onEvent(isWrite: boolean, document?: vscode.TextDocument, line?: number): void {
     this.sendHeartbeatsIfNecessary();
 
     clearTimeout(this.debounceId);
@@ -716,7 +717,13 @@ export class WakaTime {
           this.lastDebug !== this.isDebugging ||
           this.lastCompile !== this.isCompiling
         ) {
-          const selection = editor?.document === doc ? editor.selection.start : new vscode.Position(0, 0);
+          const selection =
+            editor?.document === doc
+              ? editor.selection.start
+              : new vscode.Position(
+                  line !== undefined ? line : Math.max(0, doc.lineCount - 1),
+                  0,
+                );
           this.appendHeartbeat(
             doc,
             time,
